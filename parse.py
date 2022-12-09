@@ -1,13 +1,11 @@
 import bs4
 import json
 import re
-from textblob import TextBlob
 
 
 def get_comments(html):
     soup = bs4.BeautifulSoup(html, "html.parser")
     return soup.find_all(class_="_292iotee39Lmt0MkQZ2hPV")
-
 
 DATA = {
     1: "age",
@@ -72,18 +70,22 @@ def check_data(data):
 
     return stats
 
+def first_number(raw):
+    all_numbers = re.findall(r'\d+(?:\.\d+)?', raw)
+    return float(all_numbers[0]) if len(all_numbers) > 0 else None
+
 def update_types(data):
     for d in data:
         age = re.sub(r'\D', '', d["age"])
-        d["age"] = None if age == ""  else int(age)
-        xp = re.sub(r'\D', '', d["xp"])
-        d["xp"] = None if xp == ""  else int(xp)
-        before = re.findall(r'\d+(?:\.\d+)?', d["salary_before_tax"])
-        d["salary_before_tax"] = float(before[0]) if len(before) > 0 else None
-        after = re.findall(r'\d+(?:\.\d+)?', d["salary_after_tax"])
-        d["salary_after_tax"] = float(after[0]) if len(after) > 0 else None
-        blob = TextBlob(d["happy"])
-        d["sentiment"] = blob.sentiment.polarity
+        d["age"] = first_number(d["age"])
+        d["xp"] = first_number(d["xp"])
+        d["salary_before_tax"] = first_number(d["salary_before_tax"])
+
+        if(d["salary_before_tax"] is not None and d["salary_before_tax"] < 10):
+            d["salary_before_tax"] *= 1000
+        d["salary_after_tax"] = first_number(d["salary_after_tax"])
+        if(d["salary_after_tax"] is not None and d["salary_after_tax"] < 10):
+            d["salary_after_tax"] *= 1000
     return data
 
 contents = read_file()
