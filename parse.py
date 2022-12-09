@@ -1,6 +1,7 @@
 import bs4
 import json
 import re
+from textblob import TextBlob
 
 
 def get_comments(html):
@@ -60,14 +61,30 @@ def check_data(data):
         "location": 0,
         "industry": 0,
         "happy": 0,
+        "full": 0,
     }
 
     for d in data:
+        if len(d) == 10:
+            stats["full"] += 1
         for k in d.keys():
             stats[k] += 1
 
     return stats
 
+def update_types(data):
+    for d in data:
+        age = re.sub(r'\D', '', d["age"])
+        d["age"] = None if age == ""  else int(age)
+        xp = re.sub(r'\D', '', d["xp"])
+        d["xp"] = None if xp == ""  else int(xp)
+        before = re.findall(r'\d+(?:\.\d+)?', d["salary_before_tax"])
+        d["salary_before_tax"] = float(before[0]) if len(before) > 0 else None
+        after = re.findall(r'\d+(?:\.\d+)?', d["salary_after_tax"])
+        d["salary_after_tax"] = float(after[0]) if len(after) > 0 else None
+        blob = TextBlob(d["happy"])
+        d["sentiment"] = blob.sentiment.polarity
+    return data
 
 contents = read_file()
 comments = get_comments(contents)
@@ -79,6 +96,13 @@ for c in comments:
 
 stats = check_data(all_data)
 
+complete_records = [d.copy() for d in all_data if len(d) == 10]
+
+typed_records = update_types(complete_records)
+
 print(stats)
 with open("data.json", "w") as f:
     json.dump(all_data, f)
+
+with open("complete.json", "w") as f:
+    json.dump(typed_records, f)
